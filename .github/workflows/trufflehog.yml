@@ -1,4 +1,4 @@
-ame: Trufflehog
+name: Trufflehog
 
 on:
   push:
