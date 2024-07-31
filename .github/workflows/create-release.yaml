@@ -1,0 +1,111 @@
+name: Create Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/**"
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get latest tag
+        id: get_latest_tag
+        run: echo "LATEST_TAG=$(git describe --tags --abbrev=0 || echo v0.0.0)" >> $GITHUB_OUTPUT
+
+      - name: Increment version
+        id: increment_version
+        run: |
+          if [[ -z "${LATEST_TAG}" || "${LATEST_TAG}" == "v0.0.0" ]]; then
+            echo "NEW_VERSION=v0.0.1" >> $GITHUB_OUTPUT
+          else
+            latest_version=${LATEST_TAG#v}
+            IFS='.' read -ra version_parts <<< "$latest_version"
+            ((version_parts[2]++))
+            new_version="${version_parts[0]}.${version_parts[1]}.${version_parts[2]}"
+            echo "NEW_VERSION=v$new_version" >> $GITHUB_OUTPUT
+          fi
+        env:
+          LATEST_TAG: ${{ steps.get_latest_tag.outputs.LATEST_TAG }}
+
+      - name: Generate changelog
+        id: generate_changelog
+        run: |
+          echo "Debug: Latest tag is ${{ steps.get_latest_tag.outputs.LATEST_TAG }}"
+
+          changelog=""
+          if [[ "${{ steps.get_latest_tag.outputs.LATEST_TAG }}" == "v0.0.0" ]]; then
+            echo "Debug: No previous tag found, getting all changes in src directory"
+            git diff --name-status $(git hash-object -t tree /dev/null)
+            
+            while IFS= read -r line; do
+              status=$(echo $line | cut -d' ' -f1)
+              file=$(echo $line | cut -d' ' -f2-)
+              echo "Debug: Processing file: $file with status: $status"
+              if [[ $file == *src/* ]]; then
+                case $status in
+                  A) action="Added";;
+                  M) action="Modified";;
+                  D) action="Deleted";;
+                  *) action="Changed";;
+                esac
+                changelog+="- $action [$file](https://github.com/${{ github.repository }}/commit/${{ github.sha }}#diff-$(echo -n $file | sha256sum | cut -d' ' -f1))"$'\n'
+                echo "Debug: Added to changelog: $action $file"
+              else
+                echo "Debug: Skipped file (not in src/): $file"
+              fi
+            done < <(git diff --name-status $(git hash-object -t tree /dev/null))
+          else
+            echo "Debug: Previous tag found, getting changes since ${{ steps.get_latest_tag.outputs.LATEST_TAG }}"
+            git diff --name-status ${{ steps.get_latest_tag.outputs.LATEST_TAG }}
+            
+            while IFS= read -r line; do
+              status=$(echo $line | cut -d' ' -f1)
+              file=$(echo $line | cut -d' ' -f2-)
+              echo "Debug: Processing file: $file with status: $status"
+              if [[ $file == *src/* ]]; then
+                case $status in
+                  A) action="Added";;
+                  M) action="Modified";;
+                  D) action="Deleted";;
+                  *) action="Changed";;
+                esac
+                changelog+="- $action [$file](https://github.com/${{ github.repository }}/commit/${{ github.sha }}#diff-$(echo -n $file | sha256sum | cut -d' ' -f1))"$'\n'
+                echo "Debug: Added to changelog: $action $file"
+              fi
+            done < <(git diff --name-status ${{ steps.get_latest_tag.outputs.LATEST_TAG }})
+          fi
+
+          echo "Debug: Final changelog:"
+          echo "$changelog"
+
+          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+          echo "$changelog" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          if [ -z "$changelog" ]; then
+            echo "Error: Changelog is empty"
+            exit 1
+          else
+            echo "Success: Changelog generated"
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.increment_version.outputs.NEW_VERSION }}
+          name: Release ${{ steps.increment_version.outputs.NEW_VERSION }}
+          body: |
+            Changes:
+            ${{ steps.generate_changelog.outputs.CHANGELOG }}
+          draft: false
+          prerelease: false
