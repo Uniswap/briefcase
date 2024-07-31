@@ -54,6 +54,7 @@ jobs:
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git remote set-url origin git@github.com:${{ github.repository }}.git
           git add package.json
           git commit -m "Release ${{ steps.increment_version.outputs.NEW_VERSION }}"
           git push
