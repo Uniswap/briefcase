@@ -11,6 +11,8 @@ jobs:
   create-release:
     runs-on:
       group: npm-deploy
+    permissions:
+      id-token: write
     environment:
       name: release
     steps:
