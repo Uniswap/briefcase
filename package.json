@@ -1,6 +1,6 @@
 {
   "name": "@uniswap/interfaces",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Smart contract interfaces of Uniswap protocol smart contracts",
   "repository": {
     "type": "git",
