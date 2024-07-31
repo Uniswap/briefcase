@@ -9,6 +9,9 @@ on:
 
 jobs:
   create-release:
+    permissions:
+      contents: read
+      id-token: write
     runs-on:
       group: npm-deploy
     environment:
