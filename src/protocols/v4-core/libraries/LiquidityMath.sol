@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.6.2;
+pragma solidity ^0.8.0;
 
 /// @title Math library for liquidity
 library LiquidityMath {
