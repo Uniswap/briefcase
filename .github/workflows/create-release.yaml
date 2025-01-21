@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - "src/**"
-
+      - "deployments/**"
 jobs:
   create-release:
     permissions:
