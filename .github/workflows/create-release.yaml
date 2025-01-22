@@ -54,20 +54,6 @@ jobs:
         env:
           NEW_VERSION: ${{ steps.increment_version.outputs.NEW_VERSION }}
 
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387
-        with:
-          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
-
-      - name: Commit updated package.json
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git remote set-url origin git@github.com:${{ github.repository }}.git
-          git add package.json
-          git commit -m "Release ${{ steps.increment_version.outputs.NEW_VERSION }}"
-          git push
-
       - name: Generate changelog
         id: generate_changelog
         run: |
@@ -82,7 +68,7 @@ jobs:
               status=$(echo $line | cut -d' ' -f1)
               file=$(echo $line | cut -d' ' -f2-)
               echo "Debug: Processing file: $file with status: $status"
-              if [[ $file == *src/* ]]; then
+              if [[ $file == *src/* || $file == *deployments/* ]]; then
                 case $status in
                   A) action="Added";;
                   M) action="Modified";;
@@ -92,18 +78,17 @@ jobs:
                 changelog+="- $action [$file](https://github.com/${{ github.repository }}/commit/${{ github.sha }}#diff-$(echo -n $file | sha256sum | cut -d' ' -f1))"$'\n'
                 echo "Debug: Added to changelog: $action $file"
               else
-                echo "Debug: Skipped file (not in src/): $file"
+                echo "Debug: Skipped file (not in src/ or deployments/): $file"
               fi
             done < <(git diff --name-status $(git hash-object -t tree /dev/null))
           else
-            
             echo "Debug: Previous tag found, getting changes since ${{ steps.latest_tag.outputs.LATEST_TAG }}"
             git diff --name-status ${{ steps.latest_tag.outputs.LATEST_TAG }}
             while IFS= read -r line; do
               status=$(echo $line | cut -d' ' -f1)
               file=$(echo $line | cut -d' ' -f2-)
               echo "Debug: Processing file: $file with status: $status"
-              if [[ $file == *src/* ]]; then
+              if [[ $file == *src/* || $file == *deployments/* ]]; then
                 case $status in
                   A) action="Added";;
                   M) action="Modified";;
@@ -112,6 +97,8 @@ jobs:
                 esac
                 changelog+="- $action [$file](https://github.com/${{ github.repository }}/commit/${{ github.sha }}#diff-$(echo -n $file | sha256sum | cut -d' ' -f1))"$'\n'
                 echo "Debug: Added to changelog: $action $file"
+              else
+                echo "Debug: Skipped file (not in src/ or deployments/): $file"
               fi
             done < <(git diff --name-status ${{ steps.latest_tag.outputs.LATEST_TAG }})
           fi
@@ -129,6 +116,20 @@ jobs:
           else
             echo "Success: Changelog generated"
           fi
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+
+      - name: Commit updated package.json
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git remote set-url origin git@github.com:${{ github.repository }}.git
+          git add package.json
+          git commit -m "Release ${{ steps.increment_version.outputs.NEW_VERSION }}"
+          git push
 
       - name: Create Release
         uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191
