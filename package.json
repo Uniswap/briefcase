@@ -1,6 +1,6 @@
 {
   "name": "@uniswap/briefcase",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Uniswap protocol smart contract interfaces, libraries, deployers, and more",
   "repository": {
     "type": "git",
