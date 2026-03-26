@@ -5,6 +5,7 @@ import json
 import os
 import glob
 
+# network id's to chain names.
 CHAINS = {
     "1": "Ethereum",
     "10": "Optimism",
@@ -31,7 +32,7 @@ CHAINS = {
     "7777777": "Zora",
 }
 
-HEADER = "// SPDX-License-Identifier: MIT\npragma solidity >=0.8.0;\n"
+# path helpers
 ROOT = os.path.dirname(os.path.abspath(__file__))
 DEPLOYMENTS_DIR = os.path.join(ROOT, "deployments")
 OUTPUT_DIR = os.path.join(ROOT, "src", "deployments")
@@ -40,27 +41,40 @@ OUTPUT_DIR = os.path.join(ROOT, "src", "deployments")
 def main():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
+    # loop the paths
     for path in sorted(glob.glob(os.path.join(DEPLOYMENTS_DIR, "*.json"))):
+        # load the json
         with open(path) as f:
             data = json.load(f)
 
+        # access `chain_id`, throw if unknown
         chain_id = data["chainId"]
         name = CHAINS.get(chain_id)
 
         if name is None:
-            print(f"warning: unknown chain id {chain_id}, skipping")
-            continue
+            raise ValueError(f"warning: unknown chain id {chain_id}")
 
+        # access `latest` (deployments), throw if not found
         latest = data.get("latest", {})
         if not latest:
             raise ValueError("\"latest\" not found")
 
-        lines = [HEADER, f"library {name} {{"]
+        # header; opens the library scope
+        lines = [
+            "// SPDX-License-Identifier: MIT",
+            "pragma solidity >=0.8.0;",
+            "",
+            f"library {name} {{"
+        ]
 
+        # loop contracts
         for contract, info in latest.items():
+            # handling case of `UniversalRouter#v2.1` -> `UniversalRouter_v2_1`
             name_ = contract.replace("#", "_").replace(".", "_")
             addr = info["address"]
 
+            # if it's a proxy, write NameProxy and NameImplementation
+            # else write Name
             if info.get("proxy") and info.get("implementation"):
                 impl = info["implementation"]
                 lines.append(f"    address internal constant {name_}Proxy = address({addr});")
@@ -68,8 +82,10 @@ def main():
             else:
                 lines.append(f"    address internal constant {name_} = address({addr});")
 
+        # close the library scope
         lines.append("}\n")
 
+        # write it
         out_path = os.path.join(OUTPUT_DIR, f"{name}.sol")
         with open(out_path, "w") as f:
             f.write("\n".join(lines))
