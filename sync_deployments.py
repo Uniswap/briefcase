@@ -67,8 +67,8 @@ def main():
             f"library {name} {{"
         ]
 
-        # loop contracts
-        for contract, info in latest.items():
+        # loop contracts alphabetically
+        for contract, info in sorted(latest.items()):
             # handling case of `UniversalRouter#v2.1` -> `UniversalRouter_v2_1`
             name_ = contract.replace("#", "_").replace(".", "_")
             addr = info["address"]
