@@ -109,9 +109,16 @@ jobs:
           echo "Debug: Final changelog:"
           echo "$changelog"
 
-          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
-          echo "$changelog" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          # Per-call unguessable heredoc delimiter (defense in depth against
+          # the $GITHUB_OUTPUT duplicate-key last-write-wins injection class).
+          # Fail fast if openssl returns empty or body exceeds 1MB cap.
+          CL_DELIM_RAND=$(openssl rand -hex 16)
+          [ -n "$CL_DELIM_RAND" ] || { echo "::error::openssl rand returned empty" >&2; exit 1; }
+          [ "$(printf '%s' "$changelog" | wc -c)" -lt 900000 ] || { echo "::error::changelog exceeds 900KB" >&2; exit 1; }
+          CL_DELIM="CHANGELOG_DELIMITER_$(date +%s%N)_${CL_DELIM_RAND}"
+          echo "CHANGELOG<<${CL_DELIM}" >> "$GITHUB_OUTPUT"
+          echo "$changelog" >> "$GITHUB_OUTPUT"
+          echo "${CL_DELIM}" >> "$GITHUB_OUTPUT"
 
           if [ -z "$changelog" ]; then
             echo "Error: Changelog is empty"
