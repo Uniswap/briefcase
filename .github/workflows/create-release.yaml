@@ -160,7 +160,20 @@ jobs:
           node-version: "20.x"
           registry-url: "https://registry.npmjs.org"
 
+      # Pinned by the sha512 of the published tarball, not by version tag alone.
+      # `npm install -g github:npm/cli#<sha>` cannot be used here: a global install
+      # of npm from a git spec deletes the running npm mid-install and exits 1.
       - name: Install npm
-        run: npm install -g github:npm/cli#6d1db8724b1d0e5457a87bb31e62e43d566348ce # npm@11.7.0
+        env:
+          NPM_VERSION: 11.7.0
+          NPM_INTEGRITY: sha512-wiCZpv/41bIobCoJ31NStIWKfAxxYyD1iYnWCtiyns8s5v3+l8y0HCP/sScuH6B5+GhIfda4HQKiqeGZwJWhFw==
+        run: |
+          curl -fsSL -o "${RUNNER_TEMP}/npm.tgz" "https://registry.npmjs.org/npm/-/npm-${NPM_VERSION}.tgz"
+          actual="sha512-$(openssl dgst -sha512 -binary "${RUNNER_TEMP}/npm.tgz" | openssl base64 -A)"
+          if [ "$actual" != "$NPM_INTEGRITY" ]; then
+            echo "::error::npm tarball integrity mismatch. expected ${NPM_INTEGRITY}, got ${actual}" >&2
+            exit 1
+          fi
+          npm install -g "${RUNNER_TEMP}/npm.tgz"
 
       - run: npm publish
