@@ -160,7 +160,25 @@ jobs:
           node-version: "20.x"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Install npm
-        run: npm install -g github:npm/cli#6d1db8724b1d0e5457a87bb31e62e43d566348ce # npm@11.7.0
+      # The npm release is pinned by the sha512 of its published tarball, which is
+      # a stronger guarantee than a version tag: the bytes are verified before use.
+      # The tarball is unpacked to a scratch directory and invoked from there. It is
+      # deliberately never installed globally, because a global install of an npm
+      # release removes the npm that is running it, which fails the job.
+      - name: Fetch pinned npm
+        env:
+          NPM_VERSION: 11.7.0
+          NPM_INTEGRITY: sha512-wiCZpv/41bIobCoJ31NStIWKfAxxYyD1iYnWCtiyns8s5v3+l8y0HCP/sScuH6B5+GhIfda4HQKiqeGZwJWhFw==
+        run: |
+          curl -fsSL -o "${RUNNER_TEMP}/npm.tgz" "https://registry.npmjs.org/npm/-/npm-${NPM_VERSION}.tgz"
+          actual="sha512-$(openssl dgst -sha512 -binary "${RUNNER_TEMP}/npm.tgz" | openssl base64 -A)"
+          if [ "$actual" != "$NPM_INTEGRITY" ]; then
+            echo "::error::npm tarball integrity mismatch. expected ${NPM_INTEGRITY}, got ${actual}" >&2
+            exit 1
+          fi
+          mkdir -p "${RUNNER_TEMP}/npm-pinned"
+          tar -xzf "${RUNNER_TEMP}/npm.tgz" -C "${RUNNER_TEMP}/npm-pinned" --strip-components=1
+          node "${RUNNER_TEMP}/npm-pinned/bin/npm-cli.js" --version
 
-      - run: npm publish
+      - name: Publish
+        run: node "${RUNNER_TEMP}/npm-pinned/bin/npm-cli.js" publish
