@@ -136,6 +136,7 @@ jobs:
         with:
           client-id: ${{ secrets.BRIEFCASE_APP_CLIENT_ID }}
           private-key: ${{ secrets.BRIEFCASE_APP_PRIVATE_KEY }}
+          permission-contents: write
 
       - name: Commit updated package.json
         env:
@@ -143,10 +144,10 @@ jobs:
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git remote set-url origin "https://x-access-token:${PUSH_TOKEN}@github.com/${{ github.repository }}.git"
           git add package.json
           git commit -m "Release ${{ steps.increment_version.outputs.NEW_VERSION }}"
-          git push
+          # The token goes on the push command only, so it is never written to .git/config.
+          git push "https://x-access-token:${PUSH_TOKEN}@github.com/${{ github.repository }}.git" HEAD:main
 
       - name: Create Release
         uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090 # v2.4.1
