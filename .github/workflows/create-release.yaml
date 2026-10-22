@@ -127,16 +127,23 @@ jobs:
             echo "Success: Changelog generated"
           fi
 
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@a6f90b1f127823b31d4d4a8d96047790581349bd # v0.9.1
+      # The version-bump push is authorized by a GitHub App installed on this repo,
+      # not a deploy key: a deploy key's pushes are attributed to the person who
+      # created it, and the main ruleset only lets the App bypass the pull-request rule.
+      - name: Mint a push token
+        id: push-token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
         with:
-          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+          client-id: ${{ secrets.BRIEFCASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.BRIEFCASE_APP_PRIVATE_KEY }}
 
       - name: Commit updated package.json
+        env:
+          PUSH_TOKEN: ${{ steps.push-token.outputs.token }}
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git remote set-url origin git@github.com:${{ github.repository }}.git
+          git remote set-url origin "https://x-access-token:${PUSH_TOKEN}@github.com/${{ github.repository }}.git"
           git add package.json
           git commit -m "Release ${{ steps.increment_version.outputs.NEW_VERSION }}"
           git push
