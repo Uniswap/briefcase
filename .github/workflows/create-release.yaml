@@ -129,10 +129,10 @@ jobs:
 
       # The version-bump push is authorized by a GitHub App installed on this repo,
       # not a deploy key: a deploy key's pushes are attributed to the person who
-      # created it, and the main ruleset only lets the App bypass the pull-request rule.
+      # created it, and the App is a bypass actor on the main ruleset.
       - name: Mint a push token
         id: push-token
-        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
           client-id: ${{ secrets.BRIEFCASE_APP_CLIENT_ID }}
           private-key: ${{ secrets.BRIEFCASE_APP_PRIVATE_KEY }}
