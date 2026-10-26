@@ -127,19 +127,27 @@ jobs:
             echo "Success: Changelog generated"
           fi
 
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@a6f90b1f127823b31d4d4a8d96047790581349bd # v0.9.1
+      # The version-bump push is authorized by a GitHub App installed on this repo,
+      # not a deploy key: a deploy key's pushes are attributed to the person who
+      # created it, and the App is a bypass actor on the main ruleset.
+      - name: Mint a push token
+        id: push-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
-          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+          client-id: ${{ secrets.BRIEFCASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.BRIEFCASE_APP_PRIVATE_KEY }}
+          permission-contents: write
 
       - name: Commit updated package.json
+        env:
+          PUSH_TOKEN: ${{ steps.push-token.outputs.token }}
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git remote set-url origin git@github.com:${{ github.repository }}.git
           git add package.json
           git commit -m "Release ${{ steps.increment_version.outputs.NEW_VERSION }}"
-          git push
+          # The token goes on the push command only, so it is never written to .git/config.
+          git push "https://x-access-token:${PUSH_TOKEN}@github.com/${{ github.repository }}.git" HEAD:main
 
       - name: Create Release
         uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090 # v2.4.1
