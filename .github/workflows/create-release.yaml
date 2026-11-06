@@ -7,8 +7,10 @@ on:
     paths:
       - "src/**"
       - "deployments/**"
+  workflow_dispatch:
 jobs:
   create-release:
+    if: github.ref == 'refs/heads/main'
     permissions:
       contents: write
       id-token: write
@@ -17,7 +19,7 @@ jobs:
     environment:
       name: release
     steps:
-      - uses: bullfrogsec/bullfrog@1831f79cce8ad602eef14d2163873f27081ebfb3 # v0.8.4
+      - uses: bullfrogsec/bullfrog@7dee337d4575320b6d8cbe9a56d48d2fb765963a # v0.11.1
 
       - name: Checkout code
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
