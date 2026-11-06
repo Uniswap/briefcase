@@ -10,6 +10,7 @@ on:
   workflow_dispatch:
 jobs:
   create-release:
+    # workflow_dispatch can target any branch; publish only from main (the release environment enforces this too)
     if: github.ref == 'refs/heads/main'
     permissions:
       contents: write
